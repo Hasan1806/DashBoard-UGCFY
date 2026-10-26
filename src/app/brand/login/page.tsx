@@ -21,16 +21,25 @@ export default function BrandLoginPage() {
     setIsWrongPortal(false);
     setLoading(true);
 
-    const result = await loginBrand(email, password);
-    setLoading(false);
-
-    if (result.success) {
-      router.push('/brand/dashboard');
-    } else {
-      setErrorMsg(result.error || 'Authentication failed. Please verify credentials.');
-      if (result.wrongPortal) {
-        setIsWrongPortal(true);
+    try {
+      if (typeof loginBrand !== 'function') {
+        window.location.reload();
+        return;
       }
+      const result = await loginBrand(email, password);
+      setLoading(false);
+
+      if (result.success) {
+        router.push('/brand/dashboard');
+      } else {
+        setErrorMsg(result.error || 'Authentication failed. Please verify credentials.');
+        if (result.wrongPortal) {
+          setIsWrongPortal(true);
+        }
+      }
+    } catch (err: any) {
+      setLoading(false);
+      setErrorMsg(err?.message || 'Authentication error. Please refresh and try again.');
     }
   };
 
@@ -40,10 +49,20 @@ export default function BrandLoginPage() {
     setErrorMsg(null);
     setIsWrongPortal(false);
     setLoading(true);
-    const result = await loginBrand('collaborations@plumgoodness.com', 'password123');
-    setLoading(false);
-    if (result.success) {
-      router.push('/brand/dashboard');
+
+    try {
+      if (typeof loginBrand !== 'function') {
+        window.location.reload();
+        return;
+      }
+      const result = await loginBrand('collaborations@plumgoodness.com', 'password123');
+      setLoading(false);
+      if (result.success) {
+        router.push('/brand/dashboard');
+      }
+    } catch (err: any) {
+      setLoading(false);
+      setErrorMsg(err?.message || 'Authentication error. Please refresh and try again.');
     }
   };
 

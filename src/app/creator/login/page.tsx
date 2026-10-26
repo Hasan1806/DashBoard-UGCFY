@@ -21,16 +21,25 @@ export default function CreatorLoginPage() {
     setIsWrongPortal(false);
     setLoading(true);
 
-    const result = await loginCreator(email, password);
-    setLoading(false);
-
-    if (result.success) {
-      router.push('/creator/dashboard');
-    } else {
-      setErrorMsg(result.error || 'Authentication failed. Please verify credentials.');
-      if (result.wrongPortal) {
-        setIsWrongPortal(true);
+    try {
+      if (typeof loginCreator !== 'function') {
+        window.location.reload();
+        return;
       }
+      const result = await loginCreator(email, password);
+      setLoading(false);
+
+      if (result.success) {
+        router.push('/creator/dashboard');
+      } else {
+        setErrorMsg(result.error || 'Authentication failed. Please verify credentials.');
+        if (result.wrongPortal) {
+          setIsWrongPortal(true);
+        }
+      }
+    } catch (err: any) {
+      setLoading(false);
+      setErrorMsg(err?.message || 'Authentication error. Please refresh and try again.');
     }
   };
 
@@ -40,10 +49,20 @@ export default function CreatorLoginPage() {
     setErrorMsg(null);
     setIsWrongPortal(false);
     setLoading(true);
-    const result = await loginCreator('ananya@skinwithananya.com', 'password123');
-    setLoading(false);
-    if (result.success) {
-      router.push('/creator/dashboard');
+
+    try {
+      if (typeof loginCreator !== 'function') {
+        window.location.reload();
+        return;
+      }
+      const result = await loginCreator('ananya@skinwithananya.com', 'password123');
+      setLoading(false);
+      if (result.success) {
+        router.push('/creator/dashboard');
+      }
+    } catch (err: any) {
+      setLoading(false);
+      setErrorMsg(err?.message || 'Authentication error. Please refresh and try again.');
     }
   };
 
