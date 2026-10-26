@@ -355,7 +355,7 @@ export default function BrandDashboardPage() {
             {featuredCampaign && (
               <div className="lg:col-span-7 bg-white rounded-xl border border-[#E8E8EA] overflow-hidden shadow-xs hover:border-[#7456F1] transition-all flex flex-col justify-between group">
                 <div>
-                  <div className="relative aspect-video w-full overflow-hidden bg-zinc-100">
+                  <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-zinc-100">
                     <img
                       src={featuredCampaign.coverImage}
                       alt={featuredCampaign.title}

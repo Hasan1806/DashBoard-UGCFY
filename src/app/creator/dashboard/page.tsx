@@ -261,7 +261,7 @@ export default function CreatorDashboardPage() {
                 className="bg-white rounded-xl border border-[#E8E8EA] overflow-hidden shadow-xs hover:border-[#7456F1] transition-all flex flex-col justify-between creative-card-hover group"
               >
                 <div>
-                  <div className="relative aspect-video w-full overflow-hidden bg-zinc-100">
+                  <div className="relative h-44 sm:h-48 w-full overflow-hidden bg-zinc-100">
                     <img
                       src={camp.coverImage}
                       alt={camp.title}

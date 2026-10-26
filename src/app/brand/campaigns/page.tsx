@@ -207,14 +207,14 @@ export default function BrandCampaignsPage() {
             {/* Featured Hero Campaign */}
             {featuredCampaign && (
               <div className="bg-white rounded-2xl border border-[#E8E8EA] overflow-hidden shadow-xs hover:border-[#7456F1] transition-all creative-card-hover group">
-                <div className="grid grid-cols-1 lg:grid-cols-12">
-                  <div className="lg:col-span-7 relative aspect-video lg:aspect-auto overflow-hidden bg-zinc-100">
+                <div className="grid grid-cols-1 md:grid-cols-12">
+                  <div className="md:col-span-5 lg:col-span-4 relative h-48 sm:h-56 md:h-full min-h-[190px] md:min-h-[220px] max-h-60 md:max-h-none overflow-hidden bg-zinc-100">
                     <img
                       src={featuredCampaign.coverImage}
                       alt={featuredCampaign.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute top-4 left-4 flex gap-2">
+                    <div className="absolute top-3 left-3 flex gap-2">
                       <span className="px-2.5 py-1 rounded-md bg-[#17171C]/90 text-white text-[10px] font-bold tracking-wider uppercase backdrop-blur-xs">
                         {featuredCampaign.requirements.platforms[0] || 'Instagram'}
                       </span>
@@ -223,12 +223,12 @@ export default function BrandCampaignsPage() {
                       </span>
                     </div>
 
-                    <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-bold tabular-nums">
+                    <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-sm text-white px-2.5 py-1 rounded-lg text-xs font-bold tabular-nums">
                       ₹{featuredCampaign.budget.toLocaleString('en-IN')} Total Budget
                     </div>
                   </div>
 
-                  <div className="lg:col-span-5 p-6 flex flex-col justify-between">
+                  <div className="md:col-span-7 lg:col-span-8 p-5 sm:p-6 flex flex-col justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-2 text-xs text-[#777780]">
                         <span className="font-bold text-[#18181B]">{featuredCampaign.brandName}</span>
@@ -290,7 +290,7 @@ export default function BrandCampaignsPage() {
                   className="bg-white rounded-xl border border-[#E8E8EA] overflow-hidden shadow-xs hover:border-[#7456F1] transition-all flex flex-col justify-between creative-card-hover group"
                 >
                   <div>
-                    <div className="relative aspect-video w-full overflow-hidden bg-zinc-100">
+                    <div className="relative h-44 sm:h-48 w-full overflow-hidden bg-zinc-100">
                       <img
                         src={camp.coverImage}
                         alt={camp.title}
