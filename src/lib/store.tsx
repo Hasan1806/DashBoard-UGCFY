@@ -103,7 +103,15 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
         if (parsed.currentBrand) setCurrentBrand(parsed.currentBrand);
         if (parsed.currentCreator) setCurrentCreator(parsed.currentCreator);
         if (parsed.campaigns) setCampaigns(parsed.campaigns);
-        if (parsed.applications) setApplications(parsed.applications);
+        if (parsed.applications) {
+          const creatorApps = parsed.applications.filter((a: any) => a.creatorId === 'creator-1');
+          if (creatorApps.length <= 1) {
+            const extra = INITIAL_APPLICATIONS.filter((init) => !parsed.applications.some((a: any) => a.id === init.id));
+            setApplications([...parsed.applications, ...extra]);
+          } else {
+            setApplications(parsed.applications);
+          }
+        }
         if (parsed.collaborations) setCollaborations(parsed.collaborations);
         if (parsed.savedInspirationIds) setSavedInspirationIds(parsed.savedInspirationIds);
         if (parsed.brandWallet) setBrandWallet(parsed.brandWallet);
