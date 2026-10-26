@@ -28,7 +28,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   const router = useRouter();
   const {
     role,
-    setRole,
+    logout,
     currentBrand,
     currentCreator,
     brandWallet,
@@ -280,26 +280,18 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                   <Wallet className="w-3.5 h-3.5 text-[#71717A]" />
                   <span>Billing &amp; Payouts</span>
                 </Link>
-                <button
-                  onClick={() => {
-                    const next = role === 'brand' ? 'creator' : 'brand';
-                    setRole(next);
-                    setShowProfileMenu(false);
-                    router.push(next === 'brand' ? '/brand/dashboard' : '/creator/dashboard');
-                  }}
-                  className="w-full flex items-center justify-between px-2.5 py-1.5 text-[#18181B] hover:bg-[#F4F4F5] rounded-md transition-colors cursor-pointer text-left"
-                >
-                  <span>Switch to {role === 'brand' ? 'Creator Space' : 'Brand Space'}</span>
-                  <ArrowRight className="w-3 h-3 text-[#71717A]" />
-                </button>
                 <div className="pt-1 border-t border-[#E4E4E7]">
-                  <Link
-                    href="/login"
-                    onClick={() => setShowProfileMenu(false)}
-                    className="flex items-center gap-2 px-2.5 py-1.5 text-[#DC4C4C] hover:bg-[#FEF2F2] rounded-md transition-colors"
+                  <button
+                    onClick={() => {
+                      const targetLogin = role === 'brand' ? '/brand/login' : '/creator/login';
+                      setShowProfileMenu(false);
+                      logout();
+                      router.push(targetLogin);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[#DC4C4C] hover:bg-[#FEF2F2] rounded-md transition-colors cursor-pointer text-left"
                   >
                     <span>Sign Out</span>
-                  </Link>
+                  </button>
                 </div>
               </div>
             </div>

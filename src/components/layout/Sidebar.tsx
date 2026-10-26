@@ -9,7 +9,6 @@ import {
   Sparkles,
   Wallet,
   User,
-  ArrowLeftRight,
   LogOut,
   Layers,
   ChevronRight,
@@ -44,7 +43,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const router = useRouter();
   const {
     role,
-    setRole,
+    logout,
     currentBrand,
     currentCreator,
     campaigns,
@@ -174,16 +173,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const navSections = role === 'brand' ? brandNavSections : creatorNavSections;
 
-  const handleSwitchRole = () => {
-    const nextRole = role === 'brand' ? 'creator' : 'brand';
-    setRole(nextRole);
-    if (nextRole === 'brand') {
-      router.push('/brand/dashboard');
-    } else {
-      router.push('/creator/dashboard');
-    }
-  };
-
   return (
     <>
       {/* Mobile Backdrop */}
@@ -213,14 +202,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </span>
             </div>
           </Link>
-
-          <button
-            onClick={handleSwitchRole}
-            title={`Switch to ${role === 'brand' ? 'Creator' : 'Brand'} mode`}
-            className="p-1.5 text-[#71717A] hover:text-[#18181B] hover:bg-[#F4F4F5] rounded-md transition-colors cursor-pointer"
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5" />
-          </button>
         </div>
 
         {/* Quick Action Button */}
@@ -326,14 +307,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               </div>
             </Link>
 
-            <Link
-              href="/login"
+            <button
+              onClick={() => {
+                const targetLogin = role === 'brand' ? '/brand/login' : '/creator/login';
+                logout();
+                router.push(targetLogin);
+              }}
               title="Sign Out"
               aria-label="Sign Out"
-              className="p-1.5 text-[#71717A] hover:text-[#DC4C4C] hover:bg-[#F4F4F5] rounded transition-colors"
+              className="p-1.5 text-[#71717A] hover:text-[#DC4C4C] hover:bg-[#F4F4F5] rounded transition-colors cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
-            </Link>
+            </button>
           </div>
         </div>
       </aside>

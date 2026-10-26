@@ -307,3 +307,22 @@ CREATE POLICY "Users can only view their own transactions" ON public.wallet_tran
 -- Notifications
 CREATE POLICY "Users can view and manage their own notifications" ON public.notifications
     FOR ALL USING (user_id = auth.uid());
+
+-- 18. ROLE IMMUTABILITY TRIGGER
+-- Enforces that an account's role cannot be modified once set during registration
+CREATE OR REPLACE FUNCTION public.protect_immutable_role()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.role IS NOT NULL AND NEW.role <> OLD.role THEN
+        RAISE EXCEPTION 'Account role is immutable and cannot be altered. Existing role: %, Attempted role: %', OLD.role, NEW.role;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_protect_immutable_role ON public.profiles;
+CREATE TRIGGER trg_protect_immutable_role
+BEFORE UPDATE OF role ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.protect_immutable_role();
+

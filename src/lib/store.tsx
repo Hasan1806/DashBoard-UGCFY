@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   UserRole,
+  UserAccount,
+  AuthResult,
   BrandProfile,
   CreatorProfile,
   Campaign,
@@ -18,6 +20,7 @@ import {
   ApplicationStatus,
 } from '@/types';
 import {
+  INITIAL_ACCOUNTS,
   INITIAL_BRANDS,
   INITIAL_CREATORS,
   INITIAL_CAMPAIGNS,
@@ -32,9 +35,41 @@ import {
   INITIAL_PAYOUT_METHODS,
 } from '@/data/seedData';
 
+function setSessionCookie(role: 'brand' | 'creator', email: string) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `ugcfy_role=${role}; path=/; max-age=604800; SameSite=Lax`;
+  document.cookie = `ugcfy_user=${encodeURIComponent(email)}; path=/; max-age=604800; SameSite=Lax`;
+}
+
+function clearSessionCookie() {
+  if (typeof document === 'undefined') return;
+  document.cookie = `ugcfy_role=; path=/; max-age=0; SameSite=Lax`;
+  document.cookie = `ugcfy_user=; path=/; max-age=0; SameSite=Lax`;
+}
+
 interface UGCFYContextType {
-  role: UserRole;
-  setRole: (role: UserRole) => void;
+  currentUser: UserAccount | null;
+  role: UserRole; // Read-only role derived from active account
+  isAuthenticated: boolean;
+  isLoaded: boolean;
+  
+  // Strict Auth actions
+  loginBrand: (email: string, password?: string) => Promise<AuthResult>;
+  loginCreator: (email: string, password?: string) => Promise<AuthResult>;
+  registerBrand: (
+    dataOrName: string | { companyName: string; email: string; password?: string },
+    email?: string,
+    password?: string
+  ) => Promise<AuthResult>;
+  registerCreator: (
+    dataOrName: string | { fullName: string; handle?: string; email: string; password?: string },
+    email?: string,
+    password?: string,
+    handle?: string
+  ) => Promise<AuthResult>;
+  logout: () => Promise<void>;
+
+  // Data & features
   currentBrand: BrandProfile;
   currentCreator: CreatorProfile;
   allBrands: BrandProfile[];
@@ -70,10 +105,11 @@ interface UGCFYContextType {
 
 const UGCFYContext = createContext<UGCFYContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'ugcfy_saas_state_v2';
+const STORAGE_KEY = 'ugcfy_saas_state_v3';
 
 export function UGCFYProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRoleState] = useState<UserRole>('brand');
+  const [accounts, setAccounts] = useState<UserAccount[]>(INITIAL_ACCOUNTS);
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(INITIAL_ACCOUNTS[0]);
   const [currentBrand, setCurrentBrand] = useState<BrandProfile>(INITIAL_BRANDS[0]);
   const [currentCreator, setCurrentCreator] = useState<CreatorProfile>(INITIAL_CREATORS[0]);
   const [allBrands, setAllBrands] = useState<BrandProfile[]>(INITIAL_BRANDS);
@@ -91,17 +127,53 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
   const [payoutMethods, setPayoutMethods] = useState<PayoutMethod[]>(INITIAL_PAYOUT_METHODS);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from local storage
+  // Derived role - strictly read-only from active user account
+  const role: UserRole = currentUser ? currentUser.role : 'brand';
+
+  // Load from local storage and cookies on client mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('ugcfy_saas_state_v1');
+      // Check document cookie for active session
+      let cookieRole: 'brand' | 'creator' | null = null;
+      let cookieEmail: string | null = null;
+      if (typeof document !== 'undefined') {
+        const matchRole = document.cookie.match(/(?:^|;\s*)ugcfy_role=([^;]*)/);
+        const matchUser = document.cookie.match(/(?:^|;\s*)ugcfy_user=([^;]*)/);
+        if (matchRole) cookieRole = matchRole[1] as 'brand' | 'creator';
+        if (matchUser) cookieEmail = decodeURIComponent(matchUser[1]);
+      }
+
+      const saved = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('ugcfy_saas_state_v2');
       if (saved) {
-        // Sanitize any deprecated/broken image URLs
         const sanitized = saved.replace(/photo-1608248597359-002d2a45a303/g, 'photo-1620916566398-39f1143ab7be');
         const parsed = JSON.parse(sanitized);
-        if (parsed.role) setRoleState(parsed.role);
+
+        let mergedAccounts = INITIAL_ACCOUNTS;
+        if (parsed.accounts && Array.isArray(parsed.accounts)) {
+          mergedAccounts = parsed.accounts;
+          setAccounts(parsed.accounts);
+        }
+
+        // Restore active user matching cookie or stored currentUser
+        if (cookieEmail) {
+          const matched = mergedAccounts.find((a: UserAccount) => a.email.toLowerCase() === cookieEmail?.toLowerCase());
+          if (matched) {
+            setCurrentUser(matched);
+            setSessionCookie(matched.role, matched.email);
+          }
+        } else if (parsed.currentUser) {
+          setCurrentUser(parsed.currentUser);
+          setSessionCookie(parsed.currentUser.role, parsed.currentUser.email);
+        } else if (cookieRole) {
+          const defaultAcc = mergedAccounts.find((a) => a.role === cookieRole) || INITIAL_ACCOUNTS[cookieRole === 'brand' ? 0 : 2];
+          setCurrentUser(defaultAcc);
+          setSessionCookie(defaultAcc.role, defaultAcc.email);
+        }
+
         if (parsed.currentBrand) setCurrentBrand(parsed.currentBrand);
         if (parsed.currentCreator) setCurrentCreator(parsed.currentCreator);
+        if (parsed.allBrands) setAllBrands(parsed.allBrands);
+        if (parsed.allCreators) setAllCreators(parsed.allCreators);
         if (parsed.campaigns) setCampaigns(parsed.campaigns);
         if (parsed.applications) {
           const creatorApps = parsed.applications.filter((a: any) => a.creatorId === 'creator-1');
@@ -120,6 +192,9 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
         if (parsed.creatorTransactions) setCreatorTransactions(parsed.creatorTransactions);
         if (parsed.notifications) setNotifications(parsed.notifications);
         if (parsed.payoutMethods) setPayoutMethods(parsed.payoutMethods);
+      } else {
+        // Initial setup cookie
+        setSessionCookie('brand', INITIAL_ACCOUNTS[0].email);
       }
     } catch (e) {
       console.warn('Failed to parse UGCFY stored state:', e);
@@ -133,9 +208,12 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
     if (!isLoaded) return;
     try {
       const stateToSave = {
-        role,
+        accounts,
+        currentUser,
         currentBrand,
         currentCreator,
+        allBrands,
+        allCreators,
         campaigns,
         applications,
         collaborations,
@@ -153,9 +231,12 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
     }
   }, [
     isLoaded,
-    role,
+    accounts,
+    currentUser,
     currentBrand,
     currentCreator,
+    allBrands,
+    allCreators,
     campaigns,
     applications,
     collaborations,
@@ -168,10 +249,197 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
     payoutMethods,
   ]);
 
-  const setRole = (newRole: UserRole) => {
-    setRoleState(newRole);
+  // Strict Brand Login
+  const loginBrand = async (email: string, password?: string): Promise<AuthResult> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const account = accounts.find((a) => a.email.toLowerCase() === cleanEmail);
+
+    if (!account) {
+      return {
+        success: false,
+        error: 'No account found with this email. Please check your credentials or register a Brand account.',
+      };
+    }
+
+    // Role Enforcement: If registered as Creator, reject login on Brand portal!
+    if (account.role !== 'brand') {
+      return {
+        success: false,
+        error: 'This account is registered as a Creator. Please use Creator Login.',
+        wrongPortal: true,
+        registeredRole: 'creator',
+      };
+    }
+
+    setCurrentUser(account);
+    setSessionCookie('brand', account.email);
+
+    const matchedBrand = allBrands.find((b) => b.id === account.brandProfileId || b.userId === account.id);
+    if (matchedBrand) setCurrentBrand(matchedBrand);
+
+    return { success: true };
   };
 
+  // Strict Creator Login
+  const loginCreator = async (email: string, password?: string): Promise<AuthResult> => {
+    const cleanEmail = email.trim().toLowerCase();
+    const account = accounts.find((a) => a.email.toLowerCase() === cleanEmail);
+
+    if (!account) {
+      return {
+        success: false,
+        error: 'No account found with this email. Please check your credentials or register a Creator account.',
+      };
+    }
+
+    // Role Enforcement: If registered as Brand, reject login on Creator portal!
+    if (account.role !== 'creator') {
+      return {
+        success: false,
+        error: 'This account is registered as a Brand. Please use Brand Login.',
+        wrongPortal: true,
+        registeredRole: 'brand',
+      };
+    }
+
+    setCurrentUser(account);
+    setSessionCookie('creator', account.email);
+
+    const matchedCreator = allCreators.find((c) => c.id === account.creatorProfileId || c.userId === account.id);
+    if (matchedCreator) setCurrentCreator(matchedCreator);
+
+    return { success: true };
+  };
+
+  // Strict Brand Registration
+  const registerBrand = async (
+    dataOrName: string | { companyName: string; email: string; password?: string },
+    emailArg?: string,
+    passwordArg?: string
+  ): Promise<AuthResult> => {
+    const companyName = typeof dataOrName === 'string' ? dataOrName : dataOrName.companyName;
+    const email = typeof dataOrName === 'string' ? (emailArg || '') : dataOrName.email;
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = accounts.find((a) => a.email.toLowerCase() === cleanEmail);
+    if (existing) {
+      return {
+        success: false,
+        error: `An account with this email is already registered as a ${existing.role === 'brand' ? 'Brand' : 'Creator'}. Please log in.`,
+      };
+    }
+
+    const newBrandId = `brand-${Date.now()}`;
+    const newUserId = `user-brand-${Date.now()}`;
+
+    const newProfile: BrandProfile = {
+      id: newBrandId,
+      userId: newUserId,
+      companyName,
+      logoUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80',
+      industry: 'Consumer Goods',
+      description: 'Brand producing authentic UGC media and creator partnerships.',
+      website: `https://${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
+      contactEmail: cleanEmail,
+      phone: '+91 98000 00000',
+      location: 'India',
+      socialLinks: {},
+      billingInfo: { billingAddress: 'Headquarters', city: 'Mumbai', state: 'MH', postalCode: '400001' },
+      totalCampaigns: 0,
+      totalSpent: 0,
+    };
+
+    const newAccount: UserAccount = {
+      id: newUserId,
+      email: cleanEmail,
+      fullName: companyName,
+      role: 'brand', // IMMUTABLE FIXED ROLE
+      brandProfileId: newBrandId,
+      avatarUrl: newProfile.logoUrl,
+      createdAt: new Date().toISOString(),
+    };
+
+    setAccounts((prev) => [newAccount, ...prev]);
+    setAllBrands((prev) => [newProfile, ...prev]);
+    setCurrentBrand(newProfile);
+    setCurrentUser(newAccount);
+    setSessionCookie('brand', cleanEmail);
+
+    return { success: true };
+  };
+
+  // Strict Creator Registration
+  const registerCreator = async (
+    dataOrName: string | { fullName: string; handle?: string; email: string; password?: string },
+    emailArg?: string,
+    passwordArg?: string,
+    handleArg?: string
+  ): Promise<AuthResult> => {
+    const fullName = typeof dataOrName === 'string' ? dataOrName : dataOrName.fullName;
+    const email = typeof dataOrName === 'string' ? (emailArg || '') : dataOrName.email;
+    const rawHandle = typeof dataOrName === 'string'
+      ? (handleArg || `@${fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}`)
+      : (dataOrName.handle || `@${dataOrName.fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}`);
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = accounts.find((a) => a.email.toLowerCase() === cleanEmail);
+    if (existing) {
+      return {
+        success: false,
+        error: `An account with this email is already registered as a ${existing.role === 'brand' ? 'Brand' : 'Creator'}. Please log in.`,
+      };
+    }
+
+    const newCreatorId = `creator-${Date.now()}`;
+    const newUserId = `user-creator-${Date.now()}`;
+    const cleanHandle = rawHandle.startsWith('@') ? rawHandle : `@${rawHandle}`;
+
+    const newProfile: CreatorProfile = {
+      id: newCreatorId,
+      userId: newUserId,
+      fullName,
+      handle: cleanHandle,
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+      bio: 'UGC Content Creator passionate about honest reviews and aesthetic product demos.',
+      niche: ['Skincare', 'Lifestyle'],
+      location: 'India',
+      languages: ['English', 'Hindi'],
+      platforms: {
+        instagram: { handle: cleanHandle, followers: '10K', engagement: '4.5%', url: 'https://instagram.com' },
+      },
+      followerCount: '10K',
+      engagementRate: '4.5%',
+      rating: 5.0,
+      completedCampaigns: 0,
+      rateCard: { instagramReel: 12000, instagramStory: 4000, youtubeShort: 10000, ugcProductVideo: 15000 },
+      portfolio: [],
+      availability: true,
+    };
+
+    const newAccount: UserAccount = {
+      id: newUserId,
+      email: cleanEmail,
+      fullName,
+      role: 'creator', // IMMUTABLE FIXED ROLE
+      creatorProfileId: newCreatorId,
+      avatarUrl: newProfile.avatarUrl,
+      createdAt: new Date().toISOString(),
+    };
+
+    setAccounts((prev) => [newAccount, ...prev]);
+    setAllCreators((prev) => [newProfile, ...prev]);
+    setCurrentCreator(newProfile);
+    setCurrentUser(newAccount);
+    setSessionCookie('creator', cleanEmail);
+
+    return { success: true };
+  };
+
+  // Logout
+  const logout = async () => {
+    setCurrentUser(null);
+    clearSessionCookie();
+  };
+
+  // Campaigns & Features
   const createCampaign = (data: Partial<Campaign>): Campaign => {
     const newId = `camp-${Date.now()}`;
     const newCampaign: Campaign = {
@@ -184,25 +452,25 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
       description: data.description || '',
       objective: data.objective || 'Brand Awareness',
       coverImage: data.coverImage || 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=800&auto=format&fit=crop&q=80',
-      status: (data.status as any) || 'active',
-      budget: Number(data.budget) || 100000,
-      paymentPerCreator: Number(data.paymentPerCreator) || 15000,
-      creatorsNeeded: Number(data.creatorsNeeded) || 5,
+      status: 'active',
+      budget: data.budget || 50000,
+      paymentPerCreator: data.paymentPerCreator || 15000,
+      creatorsNeeded: data.creatorsNeeded || 3,
       applicationsCount: 0,
       acceptedCount: 0,
-      deadline: data.deadline || '2026-12-01',
-      submissionDeadline: data.submissionDeadline || '2026-12-15',
+      deadline: data.deadline || '2026-12-31',
+      submissionDeadline: data.submissionDeadline || '2026-12-20',
       requirements: data.requirements || {
-        niches: ['Skincare', 'Beauty'],
+        niches: ['Beauty & Skincare'],
         platforms: ['Instagram'],
-        location: 'Pan India',
-        minFollowers: 10000,
-        deliverables: ['1x Instagram Reel', '2x Stories'],
+        location: 'India',
+        minFollowers: 1000,
+        deliverables: ['1x Instagram Reel', '1x Story'],
       },
       brief: data.brief || {
-        instructions: 'Deliver authentic testimonial.',
-        dos: ['Natural lighting'],
-        donts: ['No filters'],
+        instructions: 'Follow brand aesthetic guidelines and produce high-resolution content.',
+        dos: ['Good lighting', 'Natural speech'],
+        donts: ['Low resolution', 'Over-promising claims'],
         references: [],
       },
       createdAt: new Date().toISOString(),
@@ -210,40 +478,15 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
 
     setCampaigns((prev) => [newCampaign, ...prev]);
 
-    // Reserve budget in brand wallet if active
-    if (newCampaign.status === 'active') {
-      setBrandWallet((prev) => ({
-        ...prev,
-        availableBalance: Math.max(0, prev.availableBalance - newCampaign.budget),
-        reservedBudget: prev.reservedBudget + newCampaign.budget,
-      }));
-
-      // Add transaction
-      const newTx: WalletTransaction = {
-        id: `tx-b-${Date.now()}`,
-        walletId: 'wallet-b-1',
-        type: 'escrow_hold',
-        amount: newCampaign.budget,
-        currency: 'INR',
-        status: 'completed',
-        description: `Escrow Reserved for Campaign: ${newCampaign.title}`,
-        campaignId: newCampaign.id,
-        campaignName: newCampaign.title,
-        createdAt: new Date().toISOString(),
-      };
-      setBrandTransactions((prev) => [newTx, ...prev]);
-    }
-
-    // Add notification
     const newNotif: AppNotification = {
       id: `notif-${Date.now()}`,
-      userId: currentBrand.userId,
+      userId: currentBrand.id,
       role: 'brand',
-      title: 'Campaign Created Successfully',
-      message: `Your campaign "${newCampaign.title}" is now published and open for creator applications.`,
+      title: 'Campaign Brief Published',
+      message: `"${newCampaign.title}" is live! Creators can now apply.`,
       type: 'campaign',
       read: false,
-      linkUrl: `/brand/campaigns/${newCampaign.id}`,
+      linkUrl: `/brand/campaigns/${newId}`,
       createdAt: new Date().toISOString(),
     };
     setNotifications((prev) => [newNotif, ...prev]);
@@ -302,7 +545,6 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
 
     setApplications((prev) => [newApp, ...prev]);
 
-    // Update campaign counter
     setCampaigns((prev) =>
       prev.map((c) =>
         c.id === campaignId
@@ -311,7 +553,6 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
       )
     );
 
-    // Notify brand
     const notif: AppNotification = {
       id: `notif-${Date.now()}`,
       userId: campaign.brandId,
@@ -342,7 +583,6 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
       )
     );
 
-    // If accepted, instantiate collaboration and deliverables
     if (status === 'accepted') {
       const camp = campaigns.find((c) => c.id === targetApp.campaignId);
       const newCollabId = `collab-${Date.now()}`;
@@ -375,7 +615,6 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
 
       setCollaborations((prev) => [newCollab, ...prev]);
 
-      // Update accepted count on campaign
       setCampaigns((prev) =>
         prev.map((c) =>
           c.id === targetApp.campaignId
@@ -384,7 +623,6 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
         )
       );
 
-      // Notify creator
       const notif: AppNotification = {
         id: `notif-${Date.now()}`,
         userId: targetApp.creatorId,
@@ -397,19 +635,6 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
         createdAt: new Date().toISOString(),
       };
       setNotifications((prev) => [notif, ...prev]);
-    } else if (status === 'rejected') {
-      const notif: AppNotification = {
-        id: `notif-${Date.now()}`,
-        userId: targetApp.creatorId,
-        role: 'creator',
-        title: 'Application Update',
-        message: `Your application for "${targetApp.campaignTitle}" was not selected at this time.`,
-        type: 'application',
-        read: false,
-        linkUrl: `/creator/applications`,
-        createdAt: new Date().toISOString(),
-      };
-      setNotifications((prev) => [notif, ...prev]);
     }
   };
 
@@ -419,42 +644,23 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
     data: { fileUrl: string; notes: string }
   ) => {
     setCollaborations((prev) =>
-      prev.map((c) => {
-        if (c.id !== collaborationId) return c;
-        const updatedDeliverables = c.deliverables.map((d) =>
+      prev.map((collab) => {
+        if (collab.id !== collaborationId) return collab;
+        const updated = collab.deliverables.map((d) =>
           d.id === deliverableId
             ? {
                 ...d,
-                fileUrl: data.fileUrl,
-                notes: data.notes,
                 status: 'submitted' as const,
+                fileUrl: data.fileUrl,
+                previewUrl: data.fileUrl,
+                notes: data.notes,
                 submittedAt: new Date().toISOString(),
               }
             : d
         );
-        return {
-          ...c,
-          status: 'deliverable_submitted',
-          deliverables: updatedDeliverables,
-        };
+        return { ...collab, deliverables: updated, status: 'deliverable_submitted' };
       })
     );
-
-    const collab = collaborations.find((c) => c.id === collaborationId);
-    if (collab) {
-      const notif: AppNotification = {
-        id: `notif-${Date.now()}`,
-        userId: collab.brandId,
-        role: 'brand',
-        title: 'New Deliverable Submitted for Review',
-        message: `${collab.creatorName} submitted content for "${collab.campaignTitle}". Check and approve.`,
-        type: 'deliverable',
-        read: false,
-        linkUrl: `/brand/campaigns/${collab.campaignId}`,
-        createdAt: new Date().toISOString(),
-      };
-      setNotifications((prev) => [notif, ...prev]);
-    }
   };
 
   const reviewDeliverable = (
@@ -463,108 +669,27 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
     action: 'approved' | 'changes_requested',
     feedback?: string
   ) => {
-    let collabSnapshot: Collaboration | undefined;
-
     setCollaborations((prev) =>
-      prev.map((c) => {
-        if (c.id !== collaborationId) return c;
-        collabSnapshot = c;
-        const updatedDeliverables = c.deliverables.map((d) =>
+      prev.map((collab) => {
+        if (collab.id !== collaborationId) return collab;
+        const updated = collab.deliverables.map((d) =>
           d.id === deliverableId
             ? {
                 ...d,
                 status: action === 'approved' ? ('approved' as const) : ('changes_requested' as const),
-                reviewFeedback: feedback || (action === 'approved' ? 'Approved! Looks fantastic.' : 'Revision requested.'),
+                reviewFeedback: feedback,
               }
             : d
         );
 
-        const allApproved = updatedDeliverables.every((d) => d.status === 'approved');
-
+        const allApproved = updated.every((d) => d.status === 'approved');
         return {
-          ...c,
-          status: allApproved ? 'approved' : action === 'changes_requested' ? 'revision_requested' : c.status,
-          deliverables: updatedDeliverables,
+          ...collab,
+          deliverables: updated,
+          status: allApproved ? 'completed' : action === 'changes_requested' ? 'revision_requested' : collab.status,
         };
       })
     );
-
-    if (action === 'approved' && collabSnapshot) {
-      // Release payment to creator wallet
-      const amount = collabSnapshot.agreedAmount;
-      setCreatorWallet((prev) => ({
-        ...prev,
-        availableBalance: prev.availableBalance + amount,
-        totalEarnings: prev.totalEarnings + amount,
-      }));
-
-      // Creator transaction
-      const creatorTx: WalletTransaction = {
-        id: `tx-c-${Date.now()}`,
-        walletId: 'wallet-c-1',
-        type: 'payout_release',
-        amount,
-        currency: 'INR',
-        status: 'completed',
-        description: `Payment released for "${collabSnapshot.campaignTitle}"`,
-        campaignId: collabSnapshot.campaignId,
-        campaignName: collabSnapshot.campaignTitle,
-        invoiceNo: `CR-INV-${Date.now().toString().slice(-5)}`,
-        paymentMethod: 'UGCFY Escrow Release',
-        createdAt: new Date().toISOString(),
-      };
-      setCreatorTransactions((prev) => [creatorTx, ...prev]);
-
-      // Brand wallet update
-      setBrandWallet((prev) => ({
-        ...prev,
-        reservedBudget: Math.max(0, prev.reservedBudget - amount),
-        totalSpending: prev.totalSpending + amount,
-      }));
-
-      const brandTx: WalletTransaction = {
-        id: `tx-b-${Date.now()}`,
-        walletId: 'wallet-b-1',
-        type: 'payout_release',
-        amount,
-        currency: 'INR',
-        status: 'completed',
-        description: `Deliverable Approved Payout to ${collabSnapshot.creatorName}`,
-        campaignId: collabSnapshot.campaignId,
-        campaignName: collabSnapshot.campaignTitle,
-        invoiceNo: `BR-PAY-${Date.now().toString().slice(-5)}`,
-        paymentMethod: 'Escrow Ledger Release',
-        createdAt: new Date().toISOString(),
-      };
-      setBrandTransactions((prev) => [brandTx, ...prev]);
-
-      // Notify Creator
-      const notif: AppNotification = {
-        id: `notif-${Date.now()}`,
-        userId: collabSnapshot.creatorId,
-        role: 'creator',
-        title: 'Deliverable Approved & Funds Released! 💸',
-        message: `${collabSnapshot.brandName} approved your content! ₹${amount.toLocaleString('en-IN')} has been credited to your available wallet.`,
-        type: 'payment',
-        read: false,
-        linkUrl: `/creator/wallet`,
-        createdAt: new Date().toISOString(),
-      };
-      setNotifications((prev) => [notif, ...prev]);
-    } else if (action === 'changes_requested' && collabSnapshot) {
-      const notif: AppNotification = {
-        id: `notif-${Date.now()}`,
-        userId: collabSnapshot.creatorId,
-        role: 'creator',
-        title: 'Revision Requested on Deliverable',
-        message: `${collabSnapshot.brandName} requested updates: "${feedback || 'Please review creative feedback.'}"`,
-        type: 'deliverable',
-        read: false,
-        linkUrl: `/creator/collaborations/${collabSnapshot.id}`,
-        createdAt: new Date().toISOString(),
-      };
-      setNotifications((prev) => [notif, ...prev]);
-    }
   };
 
   const toggleSaveInspiration = (id: string) => {
@@ -581,39 +706,21 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
     }));
 
     const newTx: WalletTransaction = {
-      id: `tx-b-${Date.now()}`,
-      walletId: 'wallet-b-1',
+      id: `tx-${Date.now()}`,
+      walletId: 'wallet-brand-1',
       type: 'deposit',
       amount,
       currency: 'INR',
       status: 'completed',
-      description: `Added funds via ${method}`,
-      invoiceNo: `INV-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`,
-      paymentMethod: method,
+      description: `Funds deposit via ${method}`,
       createdAt: new Date().toISOString(),
     };
     setBrandTransactions((prev) => [newTx, ...prev]);
-
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}`,
-      userId: currentBrand.userId,
-      role: 'brand',
-      title: 'Funds Added Successfully',
-      message: `₹${amount.toLocaleString('en-IN')} credited to your available wallet via ${method}.`,
-      type: 'payment',
-      read: false,
-      linkUrl: '/brand/wallet',
-      createdAt: new Date().toISOString(),
-    };
-    setNotifications((prev) => [notif, ...prev]);
   };
 
   const withdrawCreatorFunds = (amount: number, method: string) => {
     if (amount > creatorWallet.availableBalance) {
-      return { success: false, message: 'Insufficient available balance.' };
-    }
-    if (amount < 500) {
-      return { success: false, message: 'Minimum withdrawal amount is ₹500.' };
+      return { success: false, message: 'Insufficient available balance' };
     }
 
     setCreatorWallet((prev) => ({
@@ -623,33 +730,18 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
     }));
 
     const newTx: WalletTransaction = {
-      id: `tx-c-${Date.now()}`,
-      walletId: 'wallet-c-1',
+      id: `tx-${Date.now()}`,
+      walletId: 'wallet-creator-1',
       type: 'withdrawal',
       amount,
       currency: 'INR',
       status: 'completed',
-      description: `Instant payout via ${method}`,
-      invoiceNo: `WTH-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`,
-      paymentMethod: method,
+      description: `Payout to ${method}`,
       createdAt: new Date().toISOString(),
     };
     setCreatorTransactions((prev) => [newTx, ...prev]);
 
-    const notif: AppNotification = {
-      id: `notif-${Date.now()}`,
-      userId: currentCreator.userId,
-      role: 'creator',
-      title: 'Payout Processed Successfully',
-      message: `₹${amount.toLocaleString('en-IN')} has been disbursed to your ${method}.`,
-      type: 'payment',
-      read: false,
-      linkUrl: '/creator/wallet',
-      createdAt: new Date().toISOString(),
-    };
-    setNotifications((prev) => [notif, ...prev]);
-
-    return { success: true, message: `Successfully withdrawn ₹${amount.toLocaleString('en-IN')}!` };
+    return { success: true, message: `Payout of ₹${amount.toLocaleString('en-IN')} initiated!` };
   };
 
   const updateBrandProfile = (updates: Partial<BrandProfile>) => {
@@ -678,7 +770,10 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
 
   const resetAllData = () => {
     localStorage.removeItem(STORAGE_KEY);
-    setRoleState('brand');
+    clearSessionCookie();
+    setAccounts(INITIAL_ACCOUNTS);
+    setCurrentUser(INITIAL_ACCOUNTS[0]);
+    setSessionCookie('brand', INITIAL_ACCOUNTS[0].email);
     setCurrentBrand(INITIAL_BRANDS[0]);
     setCurrentCreator(INITIAL_CREATORS[0]);
     setAllBrands(INITIAL_BRANDS);
@@ -699,8 +794,15 @@ export function UGCFYProvider({ children }: { children: React.ReactNode }) {
   return (
     <UGCFYContext.Provider
       value={{
+        currentUser,
         role,
-        setRole,
+        isAuthenticated: Boolean(currentUser),
+        isLoaded,
+        loginBrand,
+        loginCreator,
+        registerBrand,
+        registerCreator,
+        logout,
         currentBrand,
         currentCreator,
         allBrands,

@@ -8,7 +8,7 @@ import { useUGCFY } from '@/lib/store';
 function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { role, setRole, updateBrandProfile, updateCreatorProfile } = useUGCFY();
+  const { role, updateBrandProfile, updateCreatorProfile } = useUGCFY();
   const initialRole = (searchParams.get('role') as 'brand' | 'creator') || role || 'brand';
 
   const [currentStepRole, setCurrentStepRole] = useState<'brand' | 'creator'>(initialRole);
@@ -40,7 +40,6 @@ function OnboardingContent() {
       location,
       description,
     });
-    setRole('brand');
     router.push('/brand/dashboard');
   };
 
@@ -54,7 +53,6 @@ function OnboardingContent() {
       avatarUrl,
       bio,
     });
-    setRole('creator');
     router.push('/creator/dashboard');
   };
 

@@ -1,190 +1,90 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { ArrowRight, Lock, Mail, Building, User } from 'lucide-react';
-import { useUGCFY } from '@/lib/store';
+import { ArrowRight, Building, Sparkles, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
-export default function LoginPage() {
-  const router = useRouter();
-  const { setRole } = useUGCFY();
-  const [selectedRole, setSelectedRole] = useState<'brand' | 'creator'>('brand');
-  const [email, setEmail] = useState('brand@plumgoodness.com');
-  const [password, setPassword] = useState('••••••••');
-
-  const handleRoleSelect = (role: 'brand' | 'creator') => {
-    setSelectedRole(role);
-    if (role === 'brand') {
-      setEmail('collaborations@plumgoodness.com');
-    } else {
-      setEmail('ananya@skinwithananya.com');
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setRole(selectedRole);
-    if (selectedRole === 'brand') {
-      router.push('/brand/dashboard');
-    } else {
-      router.push('/creator/dashboard');
-    }
-  };
-
-  const handleQuickDemoLogin = (role: 'brand' | 'creator') => {
-    setRole(role);
-    if (role === 'brand') {
-      router.push('/brand/dashboard');
-    } else {
-      router.push('/creator/dashboard');
-    }
-  };
-
+export default function LoginPageGateway() {
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 text-[#18181B] antialiased">
-      <div className="sm:mx-auto sm:w-full sm:max-w-sm text-center">
-        <Link href="/" className="inline-flex items-center gap-2">
-          <span className="font-semibold text-lg tracking-tight text-[#18181B]">UGCFY</span>
-          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#F4F4F5] text-[#71717A] border border-[#E4E4E7]">
-            Sign in
+    <div className="min-h-screen bg-[#F7F7F5] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 text-[#18181B] antialiased selection:bg-[#7456F1]/15">
+      <div className="sm:mx-auto sm:w-full sm:max-w-lg text-center">
+        <Link href="/" className="inline-flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-[#17171C] text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-sm">
+            U
+          </div>
+          <span className="font-bold text-base tracking-tight text-[#18181B]">UGCFY</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E8E8EA] text-[#777780]">
+            Sign In Gateway
           </span>
         </Link>
-        <h2 className="mt-4 text-xl font-semibold tracking-tight text-[#18181B]">
-          Sign in to your account
-        </h2>
-        <p className="mt-1 text-xs text-[#71717A]">
-          Access your brand campaign console or creator workspace
+        <h1 className="mt-4 text-2xl sm:text-3xl font-bold tracking-tight text-[#18181B]">
+          Choose your account portal
+        </h1>
+        <p className="mt-1.5 text-xs text-[#777780] max-w-sm mx-auto">
+          UGCFY enforces strict role separation. Please select your account type to proceed to your dedicated portal.
         </p>
       </div>
 
-      <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-sm">
-        <div className="bg-white py-6 px-5 sm:px-7 rounded-xl border border-[#E4E4E7] shadow-xs">
-          {/* Role Segmented Switcher */}
-          <div className="mb-5">
-            <div className="grid grid-cols-2 gap-1 p-1 bg-[#FAFAFA] rounded-lg border border-[#E4E4E7]">
-              <button
-                type="button"
-                onClick={() => handleRoleSelect('brand')}
-                className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                  selectedRole === 'brand'
-                    ? 'bg-white text-[#18181B] border border-[#E4E4E7] shadow-2xs'
-                    : 'text-[#71717A] hover:text-[#18181B]'
-                }`}
-              >
-                <Building className="w-3.5 h-3.5" />
-                <span>Brand</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleRoleSelect('creator')}
-                className={`flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                  selectedRole === 'creator'
-                    ? 'bg-white text-[#18181B] border border-[#E4E4E7] shadow-2xs'
-                    : 'text-[#71717A] hover:text-[#18181B]'
-                }`}
-              >
-                <User className="w-3.5 h-3.5" />
-                <span>Creator</span>
-              </button>
-            </div>
-          </div>
-
-          <form className="space-y-4" onSubmit={handleSubmit}>
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Brand Portal Card */}
+          <Link
+            href="/brand/login"
+            className="group relative bg-white p-6 rounded-2xl border border-[#E8E8EA] hover:border-[#17171C] shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+          >
             <div>
-              <label className="block text-xs font-medium text-[#18181B]">
-                Email Address
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-[#E4E4E7] bg-white px-3 py-2 text-xs text-[#18181B] focus:border-[#18181B] focus:outline-none"
-                />
+              <div className="w-10 h-10 rounded-xl bg-[#17171C] text-white flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform">
+                <Building className="w-5 h-5" />
               </div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-[#18181B]">Brand Portal</h2>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-zinc-100 text-zinc-700 rounded">
+                  Brands &amp; Agencies
+                </span>
+              </div>
+              <p className="text-xs text-[#777780] mt-2 leading-relaxed">
+                Commission UGC video briefs, approve creator deliverables, and fund escrow accounts.
+              </p>
             </div>
 
+            <div className="mt-6 pt-4 border-t border-[#F4F4F5] flex items-center justify-between text-xs font-bold text-[#18181B]">
+              <span>Sign in as Brand</span>
+              <ArrowRight className="w-4 h-4 text-[#777780] group-hover:text-[#18181B] group-hover:translate-x-1 transition-all" />
+            </div>
+          </Link>
+
+          {/* Creator Portal Card */}
+          <Link
+            href="/creator/login"
+            className="group relative bg-white p-6 rounded-2xl border border-[#E8E8EA] hover:border-[#7456F1] shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+          >
             <div>
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-medium text-[#18181B]">
-                  Password
-                </label>
-                <a href="#" className="text-[11px] text-[#71717A] hover:text-[#18181B]">
-                  Forgot password?
-                </a>
+              <div className="w-10 h-10 rounded-xl bg-[#7456F1] text-white flex items-center justify-center mb-4 shadow-sm group-hover:scale-105 transition-transform">
+                <Sparkles className="w-5 h-5" />
               </div>
-              <div className="mt-1 relative">
-                <input
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-[#E4E4E7] bg-white px-3 py-2 text-xs text-[#18181B] focus:border-[#18181B] focus:outline-none"
-                />
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-[#18181B]">Creator Studio</h2>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 bg-[#EEE9FF] text-[#7456F1] rounded">
+                  UGC Creators
+                </span>
               </div>
+              <p className="text-xs text-[#777780] mt-2 leading-relaxed">
+                Pitch for active brand deals, submit video deliverables, and receive immediate payouts.
+              </p>
             </div>
 
-            <button
-              type="submit"
-              className="w-full mt-2 inline-flex items-center justify-center gap-1.5 bg-[#18181B] hover:bg-[#27272A] text-white py-2 rounded-lg text-xs font-medium shadow-xs transition-colors cursor-pointer"
-            >
-              <span>Continue as {selectedRole === 'brand' ? 'Brand' : 'Creator'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </form>
-
-          {/* Quick Demo Access */}
-          <div className="mt-6 pt-5 border-t border-[#F4F4F5]">
-            <p className="text-[10px] font-medium text-[#71717A] uppercase tracking-wider text-center mb-2.5">
-              Instant 1-Click Demo Profiles
-            </p>
-            <div className="space-y-1.5">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('brand')}
-                className="w-full flex items-center justify-between p-2 rounded-lg border border-[#E4E4E7] hover:border-[#18181B] bg-[#FAFAFA] hover:bg-white transition-colors text-left cursor-pointer group"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-[#18181B] text-white flex items-center justify-center font-medium text-[10px]">
-                    P
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-[#18181B]">Plum Goodness</p>
-                    <p className="text-[10px] text-[#71717A]">Brand Dashboard</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-3.5 h-3.5 text-[#71717A] group-hover:text-[#18181B] transition-colors" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('creator')}
-                className="w-full flex items-center justify-between p-2 rounded-lg border border-[#E4E4E7] hover:border-[#18181B] bg-[#FAFAFA] hover:bg-white transition-colors text-left cursor-pointer group"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-[#6D4AFF] text-white flex items-center justify-center font-medium text-[10px]">
-                    A
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-[#18181B]">Ananya Sharma</p>
-                    <p className="text-[10px] text-[#71717A]">Creator Workspace</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-3.5 h-3.5 text-[#71717A] group-hover:text-[#18181B] transition-colors" />
-              </button>
+            <div className="mt-6 pt-4 border-t border-[#F4F4F5] flex items-center justify-between text-xs font-bold text-[#7456F1]">
+              <span>Sign in as Creator</span>
+              <ArrowRight className="w-4 h-4 text-[#7456F1] group-hover:translate-x-1 transition-all" />
             </div>
-          </div>
+          </Link>
+        </div>
 
-          <div className="mt-5 text-center">
-            <p className="text-xs text-[#71717A]">
-              Don&apos;t have an account?{' '}
-              <Link href="/signup" className="font-medium text-[#18181B] hover:underline">
-                Register
-              </Link>
-            </p>
-          </div>
+        <div className="mt-8 text-center text-xs text-[#777780]">
+          <span>Don&apos;t have an account yet? </span>
+          <Link href="/signup" className="font-bold text-[#18181B] hover:underline">
+            Register new account
+          </Link>
         </div>
       </div>
     </div>

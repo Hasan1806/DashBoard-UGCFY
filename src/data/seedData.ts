@@ -10,7 +10,38 @@ import {
   BrandWallet,
   CreatorWallet,
   PayoutMethod,
+  UserAccount,
 } from '@/types';
+
+export const INITIAL_ACCOUNTS: UserAccount[] = [
+  {
+    id: 'user-brand-1',
+    email: 'collaborations@plumgoodness.com',
+    fullName: 'Plum Goodness',
+    role: 'brand',
+    brandProfileId: 'brand-1',
+    avatarUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-01-15T09:00:00Z',
+  },
+  {
+    id: 'user-brand-alias',
+    email: 'brand@plumgoodness.com',
+    fullName: 'Plum Goodness Admin',
+    role: 'brand',
+    brandProfileId: 'brand-1',
+    avatarUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=150&auto=format&fit=crop&q=80',
+    createdAt: '2026-01-15T09:00:00Z',
+  },
+  {
+    id: 'user-creator-1',
+    email: 'ananya@skinwithananya.com',
+    fullName: 'Ananya Sharma',
+    role: 'creator',
+    creatorProfileId: 'creator-1',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+    createdAt: '2026-02-10T11:30:00Z',
+  },
+];
 
 export const INITIAL_BRANDS: BrandProfile[] = [
   {

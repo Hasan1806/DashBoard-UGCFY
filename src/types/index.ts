@@ -9,6 +9,19 @@ export interface User {
   createdAt: string;
 }
 
+export interface UserAccount extends User {
+  brandProfileId?: string;
+  creatorProfileId?: string;
+}
+
+export interface AuthResult {
+  success: boolean;
+  error?: string;
+  wrongPortal?: boolean;
+  registeredRole?: UserRole;
+}
+
+
 export interface BrandProfile {
   id: string;
   userId: string;
