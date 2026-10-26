@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F7F7F5;
+  --foreground: #18181B;
+  --sidebar-bg: #FFFFFF;
+  --sidebar-border: #E8E8EA;
+  --primary: #7456F1;
+  --primary-hover: #6343E0;
+  --primary-light: #EEE9FF;
+  --card-bg: #FFFFFF;
+  --card-dark: #17171C;
+  --card-border: #E8E8EA;
+  --muted-text: #777780;
+  --electric-lime: #D7F36B;
+  --success: #168365;
+  --success-light: #EFF8F5;
+  --warning: #D97706;
+  --warning-light: #FEF3C7;
+  --danger: #DC4C4C;
+  --danger-light: #FEF2F2;
+}
+
+@theme {
+  --color-brand-primary: #7456F1;
+  --color-brand-hover: #6343E0;
+  --color-brand-light: #EEE9FF;
+  --color-brand-dark: #17171C;
+  --color-brand-bg: #F7F7F5;
+  --color-brand-lime: #D7F36B;
+  --color-brand-border: #E8E8EA;
+  --color-brand-card: #FFFFFF;
+  --color-brand-text: #18181B;
+  --color-brand-muted: #777780;
+  --color-brand-success: #168365;
+  --color-brand-warning: #D97706;
+  --color-brand-danger: #DC4C4C;
+}
+
+body {
+  background-color: #F7F7F5;
+  color: #18181B;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tabular figures for financial accuracy */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subtle, refined scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #E8E8EA;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D4D4D8;
+}
+
+/* Editorial badge styling */
+.editorial-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Creative card hover state */
+.creative-card-hover {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+}
+.creative-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -10px rgba(23, 23, 28, 0.08);
+  border-color: #D4D4D8;
+}
